@@ -37,23 +37,7 @@ namespace BoostYourBIM
            
 
 
-            //try
-            //{
-            //    string filename = @"T:\Transfer\lopez\Book1.xlsx";
-            //    using (ExcelPackage package = new ExcelPackage(new FileInfo(filename)))
-            //    {
-            //        ExcelWorksheet sheet = package.Workbook.Worksheets.ElementAt(0);
-
-            //        int number = Convert.ToInt32(sheet.Cells[2, 1].Value);
-            //        sheet.Cells[2, 1].Value = (number + 1); ;
-            //        package.Save();
-            //    }
-            //}
-            //catch (Exception)
-            //{
-            //    MessageBox.Show("Excel file not found", "");
-            //}
-
+          
 
             //---------------------------------------- FILTERS ------------------------------------
             IEnumerable<FamilySymbol> familyList = from elem in new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).OfCategory(BuiltInCategory.OST_TitleBlocks)
@@ -9364,7 +9348,7 @@ namespace BoostYourBIM
         public Autodesk.Revit.UI.Result OnStartup(UIControlledApplication application)
         {
             string appdataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            string folderPath = Path.Combine(appdataFolder, @"Autodesk\Revit\Addins\2019\ES_commands\img");
+            string folderPath = Path.Combine(appdataFolder, @"Autodesk\Revit\Addins\2020\ES_commands\img");
             string dll = Assembly.GetExecutingAssembly().Location;
             string myRibbon_1 = "Elite Survey Tools";
             application.CreateRibbonTab(myRibbon_1);
