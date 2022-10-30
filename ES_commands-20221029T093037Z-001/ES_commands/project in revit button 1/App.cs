@@ -9350,7 +9350,7 @@ namespace BoostYourBIM
             string appdataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string folderPath = Path.Combine(appdataFolder, @"Autodesk\Revit\Addins\2020\ES_commands\img");
             string dll = Assembly.GetExecutingAssembly().Location;
-            string myRibbon_1 = "Elite Survey Tools";
+            string myRibbon_1 = "Drafting Tools";
             application.CreateRibbonTab(myRibbon_1);
             RibbonPanel panel_1_a = application.CreateRibbonPanel(myRibbon_1, "Views / Sheets Tools");
             RibbonPanel panel_2_a = application.CreateRibbonPanel(myRibbon_1, "Working tools");
