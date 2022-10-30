@@ -8936,6 +8936,58 @@ namespace BoostYourBIM
     [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
     public class Wall_Elevation : IExternalCommand
     {
+        public static ModelLine Makeline(Autodesk.Revit.DB.Document doc, XYZ pta, XYZ ptb)
+        {
+
+
+            ModelLine modelLine = null;
+            double distance = pta.DistanceTo(ptb);
+            if (distance < 0.01)
+            {
+                TaskDialog.Show("Error", "Distance" + distance);
+                return modelLine;
+            }
+
+            XYZ norm = pta.CrossProduct(ptb);
+            if (norm.GetLength() == 0)
+            {
+                XYZ aSubB = pta.Subtract(ptb);
+                XYZ aSubBcrossz = aSubB.CrossProduct(XYZ.BasisZ);
+                double crosslenght = aSubBcrossz.GetLength();
+                if (crosslenght == 0)
+                {
+                    norm = XYZ.BasisY;
+                }
+                else
+                {
+                    norm = XYZ.BasisZ;
+                }
+            }
+
+            Autodesk.Revit.DB.Plane plane = Autodesk.Revit.DB.Plane.CreateByNormalAndOrigin(norm, ptb);
+
+
+            SketchPlane skplane = SketchPlane.Create(doc, plane);
+
+            Autodesk.Revit.DB.Line line = Autodesk.Revit.DB.Line.CreateBound(pta, ptb);
+
+            if (doc.IsFamilyDocument)
+            {
+                modelLine = doc.FamilyCreate.NewModelCurve(line, skplane) as ModelLine;
+            }
+            else
+            {
+                modelLine = doc.Create.NewModelCurve(line, skplane) as ModelLine;
+            }
+            if (modelLine == null)
+            {
+                TaskDialog.Show("Error", "Model line = null");
+            }
+            return modelLine;
+        }
+
+
+
         static AddInId appId = new AddInId(new Guid("5F88CC78-A137-4809-AAF8-A478F3B24BAB"));
         public Autodesk.Revit.UI.Result Execute(ExternalCommandData commandData, ref string message, ElementSet elementSet)
         {
@@ -8954,15 +9006,8 @@ namespace BoostYourBIM
             foreach (ElementId id in ids)
             {
                 Element e = doc.GetElement(id);
-                //Parameter lengthParam = e.get_Parameter(BuiltInParameter.CURVE_ELEM_LENGTH);
-                //if (null == wall)
-                //{
-                //    message = "Please select exactly one wall element.";
-
-                //    return Result.Failed;
-                //}
+                
                 wall = e as Wall;
-
 
                 LocationCurve lc = wall.Location as LocationCurve;
 
@@ -8974,16 +9019,6 @@ namespace BoostYourBIM
 
                     return Result.Failed;
                 }
-
-                
-
-                ViewFamilyType vft
-                  = new FilteredElementCollector(doc)
-                    .OfClass(typeof(ViewFamilyType))
-                    .Cast<ViewFamilyType>()
-                    .FirstOrDefault<ViewFamilyType>(x =>
-                      ViewFamily.Section == x.ViewFamily);
-
 
                 XYZ p = line.GetEndPoint(0);
                 XYZ q = line.GetEndPoint(1);
@@ -9020,42 +9055,52 @@ namespace BoostYourBIM
                 XYZ pntCenter = line.Evaluate(0.5, true);
                 XYZ normal = line.Direction.Normalize();
                 XYZ dir = new XYZ(0, 0, 1);
-                XYZ cross = normal.CrossProduct(dir);
+                XYZ cross = normal.CrossProduct(dir * -1);
                 XYZ pntEnd = pntCenter + cross.Multiply(2);
 
-                //Autodesk.Revit.DB.Line line2 = Autodesk.Revit.DB.Line.CreateUnbound(lp.Point, DIR);
-                //XYZ vect1 = line2.Direction * (1100 / 304.8);
-                //XYZ vect2 = vect1 + lp.Point;
-                //ModelCurve mc = Makeline(doc, lp.Point, vect2);
-                //Autodesk.Revit.DB.Line line3 = Autodesk.Revit.DB.Line.CreateBound(lp.Point, vect2);
+                XYZ poscross = normal.CrossProduct(dir);
+                XYZ pospntEnd = pntCenter + poscross.Multiply(2);
+                
 
-                //ModelCurve mline_dir_right2 = Makeline(doc, lp.Point, vect_dir_right2);
-                Autodesk.Revit.DB.Line line2 = Autodesk.Revit.DB.Line.CreateBound(pntCenter, pntEnd);
+                XYZ vect1 = line.Direction * (-1100 / 304.8);
+                vect1 = vect1.Negate(); 
+                XYZ vect2 = vect1 + line.Evaluate(0.5, true);
+                Autodesk.Revit.DB.Line line3 = Autodesk.Revit.DB.Line.CreateBound(line.Evaluate(0.5, true), vect2);
 
-                //Autodesk.Revit.DB.Line axis = Autodesk.Revit.DB.Line.CreateBound(line3.GetEndPoint(1), new XYZ(line3.GetEndPoint(1).X, line3.GetEndPoint(1).Y, line3.GetEndPoint(1).Z + 10));
+                
+                Autodesk.Revit.DB.Line line2 = Autodesk.Revit.DB.Line.CreateBound(pntCenter, pospntEnd);
 
                 double angle4 = XYZ.BasisY.AngleTo(line2.Direction);
                 double angleDegrees4 = angle4 * 180 / Math.PI;
                 if (pntCenter.X < line2.GetEndPoint(1).X)
                 {
                     angle4 = 2 * Math.PI - angle4;
-
                 }
                 double angleDegreesCorrected4 = angle4 * 180 / Math.PI;
 
-
+                Autodesk.Revit.DB.Line axis = Autodesk.Revit.DB.Line.CreateUnbound(pntEnd, XYZ.BasisZ);
 
                 using (Transaction tx = new Transaction(doc))
                 {
                     tx.Start("Create Wall Section View");
 
-                    //ViewSection.CreateSection(doc, vft.Id, sectionBox);
+                   
 
-                    ElevationMarker marker = ElevationMarker.CreateElevationMarker(doc, vftele.Id, pntEnd /*line.Evaluate(0.5,true)*/, 100);
+                    ElevationMarker marker = ElevationMarker.CreateElevationMarker(doc, vftele.Id, pntEnd/*line.Evaluate(0.5,true)*/, 100);
                     ViewSection elevation1 = marker.CreateElevation(doc, doc.ActiveView.Id, 1);
 
+                    
 
+                    if (angleDegreesCorrected4 > 160 && angleDegreesCorrected4 < 200)
+                    {
+                        angle4 = angle4 / 2;
+                        
+                        marker.Location.Rotate(axis, angle4);
+                    }
 
+                    marker.Location.Rotate(axis, angle4);
+                    //ModelCurve mline_dir_right2 = Makeline(doc, line.Evaluate(0.5, true), pntEnd);
+                    //elevation1.CropBox = e.get_BoundingBox(null);
 
                     tx.Commit();
                 }
