@@ -4135,6 +4135,7 @@ namespace BoostYourBIM
                     Autodesk.Revit.DB.Line axis3 = Autodesk.Revit.DB.Line.CreateBound(line_dir_right2.GetEndPoint(1), new XYZ(line_dir_right2.GetEndPoint(1).X, line_dir_right2.GetEndPoint(1).Y, line_dir_right2.GetEndPoint(1).Z + 10));
                     Autodesk.Revit.DB.Line axis4 = Autodesk.Revit.DB.Line.CreateBound(mline_dir_left3.GetEndPoint(1), new XYZ(mline_dir_left3.GetEndPoint(1).X, mline_dir_left3.GetEndPoint(1).Y, mline_dir_left3.GetEndPoint(1).Z + 10));
                     
+
                     ElevationMarker marker = ElevationMarker.CreateElevationMarker(doc, vftele.Id, line3.GetEndPoint(1), 100);
                     ViewSection elevation1 = marker.CreateElevation(doc, doc.ActiveView.Id, 1);
                     
@@ -4185,7 +4186,6 @@ namespace BoostYourBIM
                     ViewSection elevation3 = marker3.CreateElevation(doc, doc.ActiveView.Id, 1);
                     //marker3.Location.Rotate(axis3, angle4);
 
-
                     try
                     {
                         elevation3.Name = el.Name + " Elevation 3";
@@ -4195,8 +4195,6 @@ namespace BoostYourBIM
 
                         MessageBox.Show("Name or Number might be already in use!", "");
                     }
-
-
                     if (angleDegreesCorrected4 > 160 && angleDegreesCorrected4 < 200)
                     {
                         angle4 = angle4 / 2;
@@ -4229,8 +4227,6 @@ namespace BoostYourBIM
                     views_.Add(elevation4);
                     //elevation4.CropBox = fi.get_BoundingBox(null);
 
-
-
                     var _X2 = TRF.BasisX;
                     var _Z2 = TRF.BasisZ;
                     var _Xtran2 = TRF.OfVector(TRF.BasisX);
@@ -4251,7 +4247,6 @@ namespace BoostYourBIM
                         {
                             if (e.Id == elementIdToIsolate || elementIdToIsolate == null)
                             {
-                                
                             }
                             else
                             {
@@ -4259,8 +4254,6 @@ namespace BoostYourBIM
                                 {
                                     visible.Add(e.Id);
                                 }
-
-
                             }
                         }
                     }
@@ -4287,15 +4280,12 @@ namespace BoostYourBIM
                         MessageBox.Show("Name or Number might be already in use!", "");
                     }
 
-                   
-
                     foreach (Element e in new FilteredElementCollector(doc, doc.ActiveView.Id).WhereElementIsNotElementType())
                     {
                         if (e.Id == elementIdToIsolate || elementIdToIsolate == null)
                         {
                             //floorView.SetElementOverrides(e.Id, ogsIsolate);
                             //view3D.SetElementOverrides(e.Id, ogsIsolate);
-
                         }
                         else
                         {
@@ -4306,7 +4296,6 @@ namespace BoostYourBIM
                             {
                                 visible.Add(e.Id);
                             }
-
                         }
                     }
 
@@ -4351,7 +4340,6 @@ namespace BoostYourBIM
                         {
                             if (e.Id == elementIdToIsolate || elementIdToIsolate == null)
                             {
-                               
                             }
                             else
                             {
@@ -8955,6 +8943,10 @@ namespace BoostYourBIM
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Autodesk.Revit.DB.Document doc = uidoc.Document;
 
+            ViewFamilyType vftele = new FilteredElementCollector(doc).OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().FirstOrDefault<ViewFamilyType>(x => ViewFamily.Elevation == x.ViewFamily);
+            
+
+
             ICollection<ElementId> ids = uidoc.Selection.GetElementIds();
 
             Wall wall = null;
@@ -9025,11 +9017,45 @@ namespace BoostYourBIM
                 sectionBox.Min = min;
                 sectionBox.Max = max;
 
+                XYZ pntCenter = line.Evaluate(0.5, true);
+                XYZ normal = line.Direction.Normalize();
+                XYZ dir = new XYZ(0, 0, 1);
+                XYZ cross = normal.CrossProduct(dir);
+                XYZ pntEnd = pntCenter + cross.Multiply(2);
+
+                //Autodesk.Revit.DB.Line line2 = Autodesk.Revit.DB.Line.CreateUnbound(lp.Point, DIR);
+                //XYZ vect1 = line2.Direction * (1100 / 304.8);
+                //XYZ vect2 = vect1 + lp.Point;
+                //ModelCurve mc = Makeline(doc, lp.Point, vect2);
+                //Autodesk.Revit.DB.Line line3 = Autodesk.Revit.DB.Line.CreateBound(lp.Point, vect2);
+
+                //ModelCurve mline_dir_right2 = Makeline(doc, lp.Point, vect_dir_right2);
+                Autodesk.Revit.DB.Line line2 = Autodesk.Revit.DB.Line.CreateBound(pntCenter, pntEnd);
+
+                //Autodesk.Revit.DB.Line axis = Autodesk.Revit.DB.Line.CreateBound(line3.GetEndPoint(1), new XYZ(line3.GetEndPoint(1).X, line3.GetEndPoint(1).Y, line3.GetEndPoint(1).Z + 10));
+
+                double angle4 = XYZ.BasisY.AngleTo(line2.Direction);
+                double angleDegrees4 = angle4 * 180 / Math.PI;
+                if (pntCenter.X < line2.GetEndPoint(1).X)
+                {
+                    angle4 = 2 * Math.PI - angle4;
+
+                }
+                double angleDegreesCorrected4 = angle4 * 180 / Math.PI;
+
+
+
                 using (Transaction tx = new Transaction(doc))
                 {
                     tx.Start("Create Wall Section View");
 
-                    ViewSection.CreateSection(doc, vft.Id, sectionBox);
+                    //ViewSection.CreateSection(doc, vft.Id, sectionBox);
+
+                    ElevationMarker marker = ElevationMarker.CreateElevationMarker(doc, vftele.Id, pntEnd /*line.Evaluate(0.5,true)*/, 100);
+                    ViewSection elevation1 = marker.CreateElevation(doc, doc.ActiveView.Id, 1);
+
+
+
 
                     tx.Commit();
                 }
