@@ -8944,6 +8944,108 @@ namespace BoostYourBIM
             return Autodesk.Revit.UI.Result.Succeeded;
         }
     }
+
+    [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
+    public class Wall_Elevation : IExternalCommand
+    {
+        static AddInId appId = new AddInId(new Guid("5F88CC78-A137-4809-AAF8-A478F3B24BAB"));
+        public Autodesk.Revit.UI.Result Execute(ExternalCommandData commandData, ref string message, ElementSet elementSet)
+        {
+            UIApplication uiapp = commandData.Application;
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            Autodesk.Revit.DB.Document doc = uidoc.Document;
+
+            ICollection<ElementId> ids = uidoc.Selection.GetElementIds();
+
+            Wall wall = null;
+
+            foreach (ElementId id in ids)
+            {
+                Element e = doc.GetElement(id);
+                //Parameter lengthParam = e.get_Parameter(BuiltInParameter.CURVE_ELEM_LENGTH);
+                //if (null == wall)
+                //{
+                //    message = "Please select exactly one wall element.";
+
+                //    return Result.Failed;
+                //}
+                wall = e as Wall;
+
+
+                LocationCurve lc = wall.Location as LocationCurve;
+
+                Autodesk.Revit.DB.Line line = lc.Curve as Autodesk.Revit.DB.Line;
+
+                if (null == line)
+                {
+                    message = "Unable to retrieve wall location line.";
+
+                    return Result.Failed;
+                }
+
+                
+
+                ViewFamilyType vft
+                  = new FilteredElementCollector(doc)
+                    .OfClass(typeof(ViewFamilyType))
+                    .Cast<ViewFamilyType>()
+                    .FirstOrDefault<ViewFamilyType>(x =>
+                      ViewFamily.Section == x.ViewFamily);
+
+
+                XYZ p = line.GetEndPoint(0);
+                XYZ q = line.GetEndPoint(1);
+                XYZ v = q - p;
+
+                BoundingBoxXYZ bb = wall.get_BoundingBox(null);
+                double minZ = bb.Min.Z;
+                double maxZ = bb.Max.Z;
+
+                double w = v.GetLength();
+                double h = maxZ - minZ;
+                double d = wall.WallType.Width;
+                double offset = 0.1 * w;
+
+                XYZ min = new XYZ(-w, minZ - offset, -offset);
+                XYZ max = new XYZ(w, maxZ + offset, 0);
+
+                XYZ midpoint = p + 0.5 * v;
+                XYZ walldir = v.Normalize();
+                XYZ up = XYZ.BasisZ;
+                XYZ viewdir = walldir.CrossProduct(up);
+
+                Autodesk.Revit.DB.Transform t = Autodesk.Revit.DB.Transform.Identity;
+                t.Origin = midpoint;
+                t.BasisX = walldir;
+                t.BasisY = up;
+                t.BasisZ = viewdir;
+
+                BoundingBoxXYZ sectionBox = new BoundingBoxXYZ();
+                sectionBox.Transform = t;
+                sectionBox.Min = min;
+                sectionBox.Max = max;
+
+                using (Transaction tx = new Transaction(doc))
+                {
+                    tx.Start("Create Wall Section View");
+
+                    ViewSection.CreateSection(doc, vft.Id, sectionBox);
+
+                    tx.Commit();
+                }
+            }
+
+
+
+
+
+
+
+            
+            return Result.Succeeded;
+        }
+    }
+
     [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
     public class rhino_lns_to_csv : IExternalCommand
     {
@@ -9341,7 +9443,7 @@ namespace BoostYourBIM
         }
     }
 
-   
+
 
     class ribbonUI : IExternalApplication
     {
@@ -9389,6 +9491,8 @@ namespace BoostYourBIM
             a_2_1.LargeImage = new BitmapImage(new Uri(Path.Combine(folderPath, "rename.png"), UriKind.Absolute));
             a_2_1.ToolTip = "Renumbers a secuence of revit elements (Viewports, Doors/room number, Grids) giving that the parameter does not contain a text character";
             a_2_1.LongDescription = "...";
+
+
             PushButton a_2 = (PushButton)panel_2_a.AddItem(new PushButtonData("Delete Level ", "Delete Level ", dll, "BoostYourBIM.DeleteLevel"));
             a_2.LargeImage = new BitmapImage(new Uri(Path.Combine(folderPath, "deletelevel_32.png"), UriKind.Absolute));
             a_2.ToolTip = "Reallocated hosted element from one level to another so elements are not lose when level is deleted";
@@ -9397,10 +9501,13 @@ namespace BoostYourBIM
             a_3.ToolTip = "Removes paint from selected set of walls";
             PushButton a_12 = (PushButton)panel_2_a.AddItem(new PushButtonData("Text to Uppercase", "Text to Uppercase", dll, "BoostYourBIM.text_upper"));
             a_12.LargeImage = new BitmapImage(new Uri(Path.Combine(folderPath, "upper_.png"), UriKind.Absolute));
-            a_12.ToolTip = "";
+            a_12.ToolTip = ""; 
             PushButton a_3_1 = (PushButton)panel_3_a.AddItem(new PushButtonData("Wall Angle", "Wall Angle", dll, "BoostYourBIM.Wall_Angle_to"));
             a_3_1.LargeImage = new BitmapImage(new Uri(Path.Combine(folderPath, "iconfinder_Angle_131818.png"), UriKind.Absolute));
             a_3_1.ToolTip = "...";
+            PushButton a_3_2 = (PushButton)panel_3_a.AddItem(new PushButtonData("Wall Elevation", "Wall Elevation", dll, "BoostYourBIM.Wall_Elevation"));
+            a_3_2.LargeImage = new BitmapImage(new Uri(Path.Combine(folderPath, "iconfinder_Angle_131818.png"), UriKind.Absolute));
+            a_3_2.ToolTip = "...";
             PushButton a_8 = (PushButton)panel_2_a.AddItem(new PushButtonData("Detail Line select", "Detail Line select", dll, "BoostYourBIM.select_detailline"));
             a_8.LargeImage = new BitmapImage(new Uri(Path.Combine(folderPath, "Selection.png"), UriKind.Absolute));
             a_8.ToolTip = "After selecting a Detail line the tool will select all intances of the type in the view or the project";
