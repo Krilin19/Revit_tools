@@ -2559,36 +2559,6 @@ namespace BoostYourBIM
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Autodesk.Revit.DB.Document doc = uidoc.Document;
 
-            try
-            {
-                string filename = @"T:\Transfer\lopez\Book1.xlsx";
-                using (ExcelPackage package = new ExcelPackage(new FileInfo(filename)))
-                {
-                    ExcelWorksheet sheet = package.Workbook.Worksheets.ElementAt(0);
-
-                    int column = 15;
-                    int number = Convert.ToInt32(sheet.Cells[2, column].Value);
-                    sheet.Cells[2, column].Value = (number + 1); ;
-                    package.Save();
-                }
-            }
-
-
-
-            catch (Exception)
-            {
-                MessageBox.Show("Excel file not found", "");
-            }
-
-
-
-
-            //string comments = "Create_floor_from_rhino" + "_" + doc.Application.Username + "_" + doc.Title;
-            //string filename = @"D:\Users\lopez\Desktop\Comments.txt";
-            //StreamWriter writer = new StreamWriter(filename, true);
-            //writer.WriteLine(DateTime.Now + " - " + comments);
-            //writer.Close();
-
             List<Object> objs = new List<Object>();
             List<List<XYZ>> xyz_faces = new List<List<XYZ>>();
             IList<Face> face_with_regions = new List<Face>();
@@ -9667,6 +9637,42 @@ namespace BoostYourBIM
         }
     }
 
+    [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
+    public class clean_file : IExternalCommand
+    {
+       
+        static AddInId appId = new AddInId(new Guid("6F92CC78-A137-4809-AAF8-A478F3B24BAB"));
+        public Autodesk.Revit.UI.Result Execute(ExternalCommandData commandData, ref string message, ElementSet elementSet)
+        {
+
+            string filename2 = "";
+            System.Windows.Forms.OpenFileDialog openDialog = new System.Windows.Forms.OpenFileDialog();
+            openDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            if (openDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                filename2 = openDialog.FileName;
+            }
+
+            UIApplication App = commandData.Application;
+            Document doc = App.ActiveUIDocument.Document;
+            UIDocument uidoc = new UIDocument(doc);
+
+            
+            App.OpenAndActivateDocument(filename2);
+
+            
+            //using (Transaction tx = new Transaction(doc))
+            //{
+            //    tx.Start("Make loft");
+
+            //    tx.Commit();
+            //}
+
+            return Autodesk.Revit.UI.Result.Succeeded;
+
+        }
+    }
+
     class ribbonUI : IExternalApplication
     {
         public Autodesk.Revit.UI.Result OnStartup(UIControlledApplication application)
@@ -9729,7 +9735,7 @@ namespace BoostYourBIM
             a_3_1.ToolTip = "...";
             PushButton a_3_2 = (PushButton)panel_3_a.AddItem(new PushButtonData("Wall Elevation", "Wall Elevation", dll, "BoostYourBIM.Wall_Elevation"));
             a_3_2.LargeImage = new BitmapImage(new Uri(Path.Combine(folderPath, "iconfinder_Angle_131818.png"), UriKind.Absolute));
-            a_3_2.ToolTip = "...";
+            a_3_2.ToolTip = "..."; 
 
             PushButton a_3_3 = (PushButton)panel_3_a.AddItem(new PushButtonData("Rot_Wal_Angle_To_Grid", "Rot_Wal_Angle_To_Grid", dll, "BoostYourBIM.Rot_Wal_Angle_To_Grid"));
             a_3_3.LargeImage = new BitmapImage(new Uri(Path.Combine(folderPath, "iconfinder_Angle_131818.png"), UriKind.Absolute));
@@ -9750,6 +9756,11 @@ namespace BoostYourBIM
             PushButton a_23 = (PushButton)panel_2_a.AddItem(new PushButtonData("Clean view", "Clean view", dll, "BoostYourBIM.Clean_view"));
             a_23.LargeImage = new BitmapImage(new Uri(Path.Combine(folderPath, "solid icon.png"), UriKind.Absolute));
             a_23.ToolTip = "";
+
+            PushButton a_24 = (PushButton)panel_2_a.AddItem(new PushButtonData("clean_file", "clean_file", dll, "BoostYourBIM.clean_file"));
+            a_24.LargeImage = new BitmapImage(new Uri(Path.Combine(folderPath, "solid icon.png"), UriKind.Absolute));
+            a_24.ToolTip = ""; 
+
             PushButtonData D_1 = new PushButtonData("Line", "Line", dll, "BoostYourBIM.make_line");
             D_1.LargeImage = new BitmapImage(new Uri(Path.Combine(folderPath, "line.png"), UriKind.Absolute));
             PushButton a_16 = (PushButton)panel_3_a.AddItem(new PushButtonData("Select NB wall", "non bounding wall", dll, "BoostYourBIM.Wall_Bounding_room"));
