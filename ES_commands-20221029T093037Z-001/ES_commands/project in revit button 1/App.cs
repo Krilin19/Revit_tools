@@ -9140,14 +9140,13 @@ namespace BoostYourBIM
             ViewFamilyType vftele = new FilteredElementCollector(doc).OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().FirstOrDefault<ViewFamilyType>(x => ViewFamily.Elevation == x.ViewFamily);
 
             ICollection<ElementId> ids = uidoc.Selection.GetElementIds();
-           
+
             List<Wall> Wall_Sel = new List<Wall>();
             foreach (ElementId id in ids)
             {
                 Element e = doc.GetElement(id);
 
                 Wall_Sel.Add(e as Wall);
-               
             }
 
             List<Element> ele = new List<Element>();
@@ -9161,17 +9160,18 @@ namespace BoostYourBIM
             Autodesk.Revit.DB.Line Grid_line = dircurve as Autodesk.Revit.DB.Line;
             //XYZ dir = Grid_line.Direction;
 
-           
+
             XYZ grid_dir = Grid_line.Direction;
             XYZ up = XYZ.BasisZ;
             XYZ right = up.CrossProduct(grid_dir);
+            List<Element> To_Be_Rotated = new List<Element>();
 
             foreach (var wall in Wall_Sel)
             {
                 LocationCurve lc = wall.Location as LocationCurve;
                 Autodesk.Revit.DB.Transform curveTransform = lc.Curve.ComputeDerivatives(0.5, true);
 
-                List<Element> To_Be_Rotated = new List<Element>();
+
 
                 foreach (Wall id in Wall_Sel)
                 {
@@ -9202,7 +9202,15 @@ namespace BoostYourBIM
                         return Autodesk.Revit.UI.Result.Cancelled;
                     }
                 }
-                
+
+
+
+            }
+            string s = "You Picked:" + "\n";
+            using (Transaction tx = new Transaction(doc))
+            {
+                tx.Start("Create Wall Section View");
+
                 foreach (var wall2 in To_Be_Rotated)
                 {
                     LocationCurve lc2 = wall2.Location as LocationCurve;
@@ -9211,26 +9219,40 @@ namespace BoostYourBIM
 
                     double angle4 = grid_dir.AngleTo(rot_line2.Direction);
                     double angleDegrees4 = angle4 * 180 / Math.PI;
-                    //if (pntCenter.X < line2.GetEndPoint(1).X)
-                    //{
-                    //    angle4 = 2 * Math.PI - angle4;
-                    //}
+
+                    s += " angleDegrees x = " + angleDegrees4 + "\n";
+                    if (grid_dir.X < rot_line2.GetEndPoint(1).X)
+                    {
+                        angle4 = 2 * Math.PI - angle4;
+                    }
+                    else
+                    {
+                        angle4 = angle4 * -1;
+                    }
                     double angleDegreesCorrected4 = angle4 * 180 / Math.PI;
 
-                    Autodesk.Revit.DB.Line axis = Autodesk.Revit.DB.Line.CreateUnbound(lc2.Curve.Evaluate(0.5,true), XYZ.BasisZ);
+                    Autodesk.Revit.DB.Line axis = Autodesk.Revit.DB.Line.CreateUnbound(lc2.Curve.Evaluate(0.5, true), XYZ.BasisZ);
 
-                    wall2.Location.Rotate(axis, angleDegreesCorrected4);
+                    //if (angleDegreesCorrected4 > 160 && angleDegreesCorrected4 < 200)
+                    //{
+                    //    angle4 = angle4 / 2;
 
+                    //    wall2.Location.Rotate(axis, angleDegreesCorrected4);
+                    //}
+                    wall2.Location.Rotate(axis, angle4);
+                    //Makeline(doc, axis.Evaluate(0, false), XYZ.BasisZ);
+
+                    
+
+                    s += " grid_dir x = " + grid_dir.X.ToString() + "\n";
+
+                    s += " rot_line2 x = " + rot_line2.GetEndPoint(1).X + "\n";
+
+                    s += " angle = " + angleDegreesCorrected4 + "\n";
+
+                    TaskDialog.Show("Basic Element Info", s);
 
                 }
-
-            }
-
-            using (Transaction tx = new Transaction(doc))
-            {
-                tx.Start("Create Wall Section View");
-
-
                 //ModelCurve mline_dir_right2 = Makeline(doc, line.Evaluate(0.5, true), pntEnd);
                 //elevation1.CropBox = e.get_BoundingBox(null);
 
@@ -9645,12 +9667,12 @@ namespace BoostYourBIM
         public Autodesk.Revit.UI.Result Execute(ExternalCommandData commandData, ref string message, ElementSet elementSet)
         {
 
-            string filename2 = "";
+            string filename = "";
             System.Windows.Forms.OpenFileDialog openDialog = new System.Windows.Forms.OpenFileDialog();
             openDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             if (openDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                filename2 = openDialog.FileName;
+                filename = openDialog.FileName;
             }
 
             UIApplication App = commandData.Application;
@@ -9658,9 +9680,21 @@ namespace BoostYourBIM
             UIDocument uidoc = new UIDocument(doc);
 
             
-            App.OpenAndActivateDocument(filename2);
+            App.OpenAndActivateDocument(filename);
 
-            
+            //Get application and documnet objects
+            string filename2 = "";
+            System.Windows.Forms.OpenFileDialog openDialog2 = new System.Windows.Forms.OpenFileDialog();
+            openDialog2.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            if (openDialog2.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                openDialog2.FileName = "hola";
+                filename2 = openDialog2.FileName;
+            }
+            doc.SaveAs(Environment.SpecialFolder.Desktop + "\\hola");
+
+            return Result.Succeeded;
+
             //using (Transaction tx = new Transaction(doc))
             //{
             //    tx.Start("Make loft");
@@ -9673,12 +9707,197 @@ namespace BoostYourBIM
         }
     }
 
+
+    [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
+    public class Wall_Sweeps : IExternalCommand
+    {
+        public static ModelLine Makeline(Autodesk.Revit.DB.Document doc, XYZ pta, XYZ ptb)
+        {
+
+
+            ModelLine modelLine = null;
+            double distance = pta.DistanceTo(ptb);
+            if (distance < 0.01)
+            {
+                TaskDialog.Show("Error", "Distance" + distance);
+                return modelLine;
+            }
+
+            XYZ norm = pta.CrossProduct(ptb);
+            if (norm.GetLength() == 0)
+            {
+                XYZ aSubB = pta.Subtract(ptb);
+                XYZ aSubBcrossz = aSubB.CrossProduct(XYZ.BasisZ);
+                double crosslenght = aSubBcrossz.GetLength();
+                if (crosslenght == 0)
+                {
+                    norm = XYZ.BasisY;
+                }
+                else
+                {
+                    norm = XYZ.BasisZ;
+                }
+            }
+
+            Autodesk.Revit.DB.Plane plane = Autodesk.Revit.DB.Plane.CreateByNormalAndOrigin(norm, ptb);
+
+
+            SketchPlane skplane = SketchPlane.Create(doc, plane);
+
+            Autodesk.Revit.DB.Line line = Autodesk.Revit.DB.Line.CreateBound(pta, ptb);
+
+            if (doc.IsFamilyDocument)
+            {
+                modelLine = doc.FamilyCreate.NewModelCurve(line, skplane) as ModelLine;
+            }
+            else
+            {
+                modelLine = doc.Create.NewModelCurve(line, skplane) as ModelLine;
+            }
+            if (modelLine == null)
+            {
+                TaskDialog.Show("Error", "Model line = null");
+            }
+            return modelLine;
+        }
+
+
+
+        static AddInId appId = new AddInId(new Guid("5F88CC78-A137-4809-AAF8-A478F3B24BAB"));
+        public Autodesk.Revit.UI.Result Execute(ExternalCommandData commandData, ref string message, ElementSet elementSet)
+        {
+            UIApplication uiapp = commandData.Application;
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            Autodesk.Revit.DB.Document doc = uidoc.Document;
+
+            ViewFamilyType vftele = new FilteredElementCollector(doc).OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().FirstOrDefault<ViewFamilyType>(x => ViewFamily.Elevation == x.ViewFamily);
+
+
+
+            ICollection<ElementId> ids = uidoc.Selection.GetElementIds();
+
+            Wall wall = null;
+
+            foreach (ElementId id in ids)
+            {
+                Element e = doc.GetElement(id);
+
+                wall = e as Wall;
+
+                LocationCurve lc = wall.Location as LocationCurve;
+
+                Autodesk.Revit.DB.Line line = lc.Curve as Autodesk.Revit.DB.Line;
+
+                if (null == line)
+                {
+                    message = "Unable to retrieve wall location line.";
+
+                    return Result.Failed;
+                }
+
+                //XYZ p = line.GetEndPoint(0);
+                //XYZ q = line.GetEndPoint(1);
+                //XYZ v = q - p;
+
+                //BoundingBoxXYZ bb = wall.get_BoundingBox(null);
+                //double minZ = bb.Min.Z;
+                //double maxZ = bb.Max.Z;
+
+                //double w = v.GetLength();
+                //double h = maxZ - minZ;
+                //double d = wall.WallType.Width;
+                //double offset = 0.1 * w;
+
+                //XYZ min = new XYZ(-w, minZ - offset, -offset);
+                //XYZ max = new XYZ(w, maxZ + offset, 0);
+
+                //XYZ midpoint = p + 0.5 * v;
+                //XYZ walldir = v.Normalize();
+                //XYZ up = XYZ.BasisZ;
+                //XYZ viewdir = walldir.CrossProduct(up);
+
+                //Autodesk.Revit.DB.Transform t = Autodesk.Revit.DB.Transform.Identity;
+                //t.Origin = midpoint;
+                //t.BasisX = walldir;
+                //t.BasisY = up;
+                //t.BasisZ = viewdir;
+
+                //BoundingBoxXYZ sectionBox = new BoundingBoxXYZ();
+                //sectionBox.Transform = t;
+                //sectionBox.Min = min;
+                //sectionBox.Max = max;
+
+                XYZ pntCenter = line.Evaluate(0.5, true);
+                XYZ normal = line.Direction.Normalize();
+                XYZ dir = new XYZ(0, 0, 1);
+                XYZ cross = normal.CrossProduct(dir * -1);
+                XYZ pntEnd = pntCenter + cross.Multiply(2);
+
+                XYZ poscross = normal.CrossProduct(dir);
+                XYZ pospntEnd = pntCenter + poscross.Multiply(2);
+
+
+                XYZ vect1 = line.Direction * (-1100 / 304.8);
+                vect1 = vect1.Negate();
+                XYZ vect2 = vect1 + line.Evaluate(0.5, true);
+                Autodesk.Revit.DB.Line line3 = Autodesk.Revit.DB.Line.CreateBound(line.Evaluate(0.5, true), vect2);
+
+
+                Autodesk.Revit.DB.Line line2 = Autodesk.Revit.DB.Line.CreateBound(pntCenter, pospntEnd);
+
+                double angle4 = XYZ.BasisY.AngleTo(line2.Direction);
+                double angleDegrees4 = angle4 * 180 / Math.PI;
+                if (pntCenter.X < line2.GetEndPoint(1).X)
+                {
+                    angle4 = 2 * Math.PI - angle4;
+                }
+                double angleDegreesCorrected4 = angle4 * 180 / Math.PI;
+
+                Autodesk.Revit.DB.Line axis = Autodesk.Revit.DB.Line.CreateUnbound(pntEnd, XYZ.BasisZ);
+
+                using (Transaction tx = new Transaction(doc))
+                {
+                    tx.Start("Create Wall Section View");
+
+
+
+                    ElevationMarker marker = ElevationMarker.CreateElevationMarker(doc, vftele.Id, pntEnd/*line.Evaluate(0.5,true)*/, 100);
+                    ViewSection elevation1 = marker.CreateElevation(doc, doc.ActiveView.Id, 1);
+
+
+
+                    if (angleDegreesCorrected4 > 160 && angleDegreesCorrected4 < 200)
+                    {
+                        angle4 = angle4 / 2;
+
+                        marker.Location.Rotate(axis, angle4);
+                    }
+
+                    marker.Location.Rotate(axis, angle4);
+                    //ModelCurve mline_dir_right2 = Makeline(doc, line.Evaluate(0.5, true), pntEnd);
+                    //elevation1.CropBox = e.get_BoundingBox(null);
+
+                    tx.Commit();
+                }
+            }
+
+
+
+
+
+
+
+
+            return Result.Succeeded;
+        }
+    }
+
     class ribbonUI : IExternalApplication
     {
         public Autodesk.Revit.UI.Result OnStartup(UIControlledApplication application)
         {
             string appdataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            string folderPath = Path.Combine(appdataFolder, @"Autodesk\Revit\Addins\2020\ES_commands\img");
+            string folderPath = Path.Combine(appdataFolder, @"Autodesk\Revit\Addins\2022\ES_commands\img");
             string dll = Assembly.GetExecutingAssembly().Location;
             string myRibbon_1 = "Drafting Tools";
             application.CreateRibbonTab(myRibbon_1);
