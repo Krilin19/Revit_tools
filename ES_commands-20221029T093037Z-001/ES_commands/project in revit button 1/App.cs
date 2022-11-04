@@ -9719,9 +9719,9 @@ namespace BoostYourBIM
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Autodesk.Revit.DB.Document doc = uidoc.Document;
 
-            ViewFamilyType vftele = new FilteredElementCollector(doc).OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().FirstOrDefault<ViewFamilyType>(x => ViewFamily.Elevation == x.ViewFamily);
+            //ViewFamilyType vftele = new FilteredElementCollector(doc).OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().FirstOrDefault<ViewFamilyType>(x => ViewFamily.Elevation == x.ViewFamily);
 
-
+           
 
             ICollection<ElementId> ids = uidoc.Selection.GetElementIds();
 
@@ -9733,98 +9733,37 @@ namespace BoostYourBIM
 
                 wall = e as Wall;
 
-                LocationCurve lc = wall.Location as LocationCurve;
 
-                Autodesk.Revit.DB.Line line = lc.Curve as Autodesk.Revit.DB.Line;
+                //ElementType wallSweepType = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Cornices).WhereElementIsElementType().);
 
-                if (null == line)
+
+                FilteredElementCollector getallFillRegions = new FilteredElementCollector(doc).OfClass(typeof(WallSweep));
+                List<string> names = new List<string>();
+
+                foreach (var item in getallFillRegions)
                 {
-                    message = "Unable to retrieve wall location line.";
-
-                    return Result.Failed;
+                    names.Add(item.Name);
                 }
 
-                //XYZ p = line.GetEndPoint(0);
-                //XYZ q = line.GetEndPoint(1);
-                //XYZ v = q - p;
-
-                //BoundingBoxXYZ bb = wall.get_BoundingBox(null);
-                //double minZ = bb.Min.Z;
-                //double maxZ = bb.Max.Z;
-
-                //double w = v.GetLength();
-                //double h = maxZ - minZ;
-                //double d = wall.WallType.Width;
-                //double offset = 0.1 * w;
-
-                //XYZ min = new XYZ(-w, minZ - offset, -offset);
-                //XYZ max = new XYZ(w, maxZ + offset, 0);
-
-                //XYZ midpoint = p + 0.5 * v;
-                //XYZ walldir = v.Normalize();
-                //XYZ up = XYZ.BasisZ;
-                //XYZ viewdir = walldir.CrossProduct(up);
-
-                //Autodesk.Revit.DB.Transform t = Autodesk.Revit.DB.Transform.Identity;
-                //t.Origin = midpoint;
-                //t.BasisX = walldir;
-                //t.BasisY = up;
-                //t.BasisZ = viewdir;
-
-                //BoundingBoxXYZ sectionBox = new BoundingBoxXYZ();
-                //sectionBox.Transform = t;
-                //sectionBox.Min = min;
-                //sectionBox.Max = max;
-
-                XYZ pntCenter = line.Evaluate(0.5, true);
-                XYZ normal = line.Direction.Normalize();
-                XYZ dir = new XYZ(0, 0, 1);
-                XYZ cross = normal.CrossProduct(dir * -1);
-                XYZ pntEnd = pntCenter + cross.Multiply(2);
-
-                XYZ poscross = normal.CrossProduct(dir);
-                XYZ pospntEnd = pntCenter + poscross.Multiply(2);
-
-
-                XYZ vect1 = line.Direction * (-1100 / 304.8);
-                vect1 = vect1.Negate();
-                XYZ vect2 = vect1 + line.Evaluate(0.5, true);
-                Autodesk.Revit.DB.Line line3 = Autodesk.Revit.DB.Line.CreateBound(line.Evaluate(0.5, true), vect2);
-
-
-                Autodesk.Revit.DB.Line line2 = Autodesk.Revit.DB.Line.CreateBound(pntCenter, pospntEnd);
-
-                double angle4 = XYZ.BasisY.AngleTo(line2.Direction);
-                double angleDegrees4 = angle4 * 180 / Math.PI;
-                if (pntCenter.X < line2.GetEndPoint(1).X)
-                {
-                    angle4 = 2 * Math.PI - angle4;
-                }
-                double angleDegreesCorrected4 = angle4 * 180 / Math.PI;
-
-                Autodesk.Revit.DB.Line axis = Autodesk.Revit.DB.Line.CreateUnbound(pntEnd, XYZ.BasisZ);
 
                 using (Transaction tx = new Transaction(doc))
                 {
-                    tx.Start("Create Wall Section View");
+                    tx.Start("Create Wall Sweep");
 
+                    
+                    //if (wallSweepType != null)
+                    //{
+                    //    var wallSweepInfo = new WallSweepInfo(WallSweepType.Sweep, false);
+                    //    wallSweepInfo.Distance = 2;
 
+                    //    WallSweep.Create(wall, wallSweepType.Id, wallSweepInfo);
+                      
+                    //}
+                    //else
+                    //{
+                    //    TaskDialog.Show("ERROR", "no wall sweep type is found");
+                    //}
 
-                    ElevationMarker marker = ElevationMarker.CreateElevationMarker(doc, vftele.Id, pntEnd/*line.Evaluate(0.5,true)*/, 100);
-                    ViewSection elevation1 = marker.CreateElevation(doc, doc.ActiveView.Id, 1);
-
-
-
-                    if (angleDegreesCorrected4 > 160 && angleDegreesCorrected4 < 200)
-                    {
-                        angle4 = angle4 / 2;
-
-                        marker.Location.Rotate(axis, angle4);
-                    }
-
-                    marker.Location.Rotate(axis, angle4);
-                    //ModelCurve mline_dir_right2 = Makeline(doc, line.Evaluate(0.5, true), pntEnd);
-                    //elevation1.CropBox = e.get_BoundingBox(null);
 
                     tx.Commit();
                 }
@@ -9934,6 +9873,10 @@ namespace BoostYourBIM
             PushButton a_16 = (PushButton)panel_3_a.AddItem(new PushButtonData("Select NB wall", "non bounding wall", dll, "BoostYourBIM.Wall_Bounding_room"));
             a_16.LargeImage = new BitmapImage(new Uri(Path.Combine(folderPath, "nonroombounding.png"), UriKind.Absolute));
             a_16.ToolTip = "...";
+            PushButton a_17 = (PushButton)panel_3_a.AddItem(new PushButtonData("Wall_Sweeps", "Wall_Sweeps", dll, "BoostYourBIM.Wall_Sweeps"));
+            a_17.LargeImage = new BitmapImage(new Uri(Path.Combine(folderPath, "nonroombounding.png"), UriKind.Absolute));
+            a_17.ToolTip = "..."; 
+
             PushButtonData D_2 = new PushButtonData("Plane", "Plane", dll, "BoostYourBIM.line_point_plane");
             D_2.LargeImage = new BitmapImage(new Uri(Path.Combine(folderPath, "line.png"), UriKind.Absolute));
             PushButtonData D_3 = new PushButtonData("Line distance", "Line from surface", dll, "BoostYourBIM.make_line_from_surface_normal");
