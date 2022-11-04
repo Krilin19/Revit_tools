@@ -9711,57 +9711,6 @@ namespace BoostYourBIM
     [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
     public class Wall_Sweeps : IExternalCommand
     {
-        public static ModelLine Makeline(Autodesk.Revit.DB.Document doc, XYZ pta, XYZ ptb)
-        {
-
-
-            ModelLine modelLine = null;
-            double distance = pta.DistanceTo(ptb);
-            if (distance < 0.01)
-            {
-                TaskDialog.Show("Error", "Distance" + distance);
-                return modelLine;
-            }
-
-            XYZ norm = pta.CrossProduct(ptb);
-            if (norm.GetLength() == 0)
-            {
-                XYZ aSubB = pta.Subtract(ptb);
-                XYZ aSubBcrossz = aSubB.CrossProduct(XYZ.BasisZ);
-                double crosslenght = aSubBcrossz.GetLength();
-                if (crosslenght == 0)
-                {
-                    norm = XYZ.BasisY;
-                }
-                else
-                {
-                    norm = XYZ.BasisZ;
-                }
-            }
-
-            Autodesk.Revit.DB.Plane plane = Autodesk.Revit.DB.Plane.CreateByNormalAndOrigin(norm, ptb);
-
-
-            SketchPlane skplane = SketchPlane.Create(doc, plane);
-
-            Autodesk.Revit.DB.Line line = Autodesk.Revit.DB.Line.CreateBound(pta, ptb);
-
-            if (doc.IsFamilyDocument)
-            {
-                modelLine = doc.FamilyCreate.NewModelCurve(line, skplane) as ModelLine;
-            }
-            else
-            {
-                modelLine = doc.Create.NewModelCurve(line, skplane) as ModelLine;
-            }
-            if (modelLine == null)
-            {
-                TaskDialog.Show("Error", "Model line = null");
-            }
-            return modelLine;
-        }
-
-
 
         static AddInId appId = new AddInId(new Guid("5F88CC78-A137-4809-AAF8-A478F3B24BAB"));
         public Autodesk.Revit.UI.Result Execute(ExternalCommandData commandData, ref string message, ElementSet elementSet)
